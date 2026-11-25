@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NoteSpace - Smart Notes</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+body { background: #f5f7fb; color: #252b42; }
+
+/* SIDEBAR */
+.sidebar { width: 250px; height: 100vh; position: fixed; left: 0; top: 0; background: white; padding: 25px 20px; border-right: 1px solid #e5e7eb; }
+.logo { font-size: 23px; font-weight: bold; color: #315bdb; margin-bottom: 35px; }
+.create-btn { display: block; background: #315bdb; color: white; text-align: center; padding: 14px; border-radius: 8px; margin-bottom: 35px; cursor: pointer; border: none; width: 100%; font-size: 15px; }
+.create-btn:hover { background: #2448b8; }
+.menu-title { color: #999; font-size: 12px; margin-bottom: 15px; margin-top: 20px; }
+.menu-item { display: block; padding: 13px; margin-bottom: 5px; cursor: pointer; border-radius: 8px; color: #555; font-size: 14px; }
+.menu-item:hover, .menu-item.active { background: #eaf0ff; color: #315bdb; }
+.profile { position: absolute; bottom: 30px; }
+.profile h3 { font-size: 14px; }
+.profile p { color: #999; font-size: 12px; margin-top: 5px; }
+
+/* MAIN */
+.main { margin-left: 250px; padding: 35px; }
+header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+header h1 { font-size: 30px; margin-bottom: 8px; }
+header p { color: #888; }
+.search input { width: 300px; padding: 13px; border: 1px solid #ddd; border-radius: 8px; outline: none; }
+.search input:focus { border-color: #315bdb; }
+
+/* DASHBOARD */
+.dashboard { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 35px; }
+.stat-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+.stat-card h3 { color: #888; font-size: 14px; margin-bottom: 15px; }
+.stat-card h2 { color: #315bdb; font-size: 28px; }
+
+/* NOTES */
+.notes-header { display: flex; justify-content: space-between; align-items: center; margin: 35px 0 20px; }
+.notes-header button { padding: 11px 18px; background: #315bdb; color: white; border: none; border-radius: 7px; cursor: pointer; }
+.notes-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.note-card { background: white; padding: 22px; border-radius: 12px; min-height: 200px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); transition: 0.3s; overflow-wrap: anywhere; }
+.note-card:hover { transform: translateY(-5px); box-shadow: 0 5px 20px rgba(0,0,0,0.08); }
+.note-card h3 { margin-bottom: 12px; }
+.note-card p { color: #777; line-height: 1.6; font-size: 14px; white-space: pre-wrap; }
+.note-card small { display: block; margin-top: 20px; color: #aaa; }
+.note-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 15px; }
+.note-actions button { padding: 7px 10px; border: none; border-radius: 5px; cursor: pointer; background: #edf1ff; color: #315bdb; }
+.note-actions button:hover { background: #dce5ff; }
+.empty-message { color: #888; grid-column: 1 / -1; text-align: center; padding: 50px; }
+
+/* MODAL */
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; padding: 20px; z-index: 100; }
+.modal-content { background: white; width: 550px; max-width: 100%; padding: 25px; border-radius: 12px; }
+.close { float: right; font-size: 28px; cursor: pointer; color: #777; }
+.modal-content h2 { margin-bottom: 10px; }
+.modal-content input, .modal-content select, .modal-content textarea { width: 100%; padding: 13px; margin-top: 15px; border: 1px solid #ddd; border-radius: 7px; outline: none; font-size: 14px; }
+.modal-content textarea { height: 230px; resize: vertical; }
+.modal-content input:focus, .modal-content textarea:focus { border-color: #315bdb; }
+.editor-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; gap: 10px; }
+.editor-footer button { padding: 11px 18px; background: #315bdb; color: white; border: none; border-radius: 7px; cursor: pointer; }
+#saveStatus { color: #888; font-size: 12px; }
+
+footer { text-align: center; margin-top: 50px; padding: 20px; color: #999; font-size: 13px; }
+
+/* RESPONSIVE */
+@media (max-width: 1100px) { .notes-container { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 750px) {
+  .sidebar { width: 75px; padding: 15px 8px; }
+  .logo { font-size: 12px; }
+  .sidebar .create-btn { font-size: 10px; padding: 10px 3px; }
+  .menu-title, .folders, .profile { display: none; }
+  .menu-item { font-size: 11px; padding: 12px 3px; }
+  .main { margin-left: 75px; padding: 20px; }
+  .dashboard, .notes-container { grid-template-columns: 1fr; }
+  header input { width: 100%; }
+}
+</style>
+</head>
+
+<body>
+
+<aside class="sidebar">
+  <div class="logo">📝 NoteSpace</div>
+  <button class="create-btn" onclick="createNote()">+ Create New Note</button>
+
+  <div class="menu">
+    <p class="menu-title">MENU</p>
+    <div class="menu-item active" onclick="showAllNotes(this)">📋 All Notes</div>
+    <div class="menu-item" onclick="showPinnedNotes(this)">📌 Pinned Notes</div>
+    <div class="menu-item" onclick="showTrash(this)">🗑️ Trash</div>
+  </div>
+
+  <div class="folders">
+    <p class="menu-title">FOLDERS</p>
+    <div class="menu-item" onclick="filterFolder('Personal',this)">📁 Personal</div>
+    <div class="menu-item" onclick="filterFolder('Study',this)">📁 Study</div>
+    <div class="menu-item" onclick="filterFolder('Work',this)">📁 Work</div>
+  </div>
+
+  <div class="profile">
+    <h3>👤 My Account</h3>
+    <p>Free Account</p>
+  </div>
+</aside>
+
+<main class="main">
+  <header>
+    <div>
+      <h1>My Notes</h1>
+      <p>Organize your thoughts and ideas.</p>
+    </div>
+    <div class="search">
+      <input type="search" id="search" placeholder="🔍 Search notes..." oninput="searchNotes()">
+    </div>
+  </header>
+
+  <section class="dashboard">
+    <div class="stat-card"><h3>Total Notes</h3><h2 id="totalNotes">0</h2></div>
+    <div class="stat-card"><h3>Pinned Notes</h3><h2 id="pinnedNotes">0</h2></div>
+    <div class="stat-card"><h3>Folders</h3><h2>3</h2></div>
+  </section>
+
+  <section>
+    <div class="notes-header">
+      <h2 id="sectionTitle">All Notes</h2>
+      <button onclick="createNote()">+ New Note</button>
+    </div>
+    <div class="notes-container" id="notesContainer"></div>
+  </section>
+
+  <footer>
+    <p>© 2026 NoteSpace | Organize Your Thoughts</p>
+  </footer>
+</main>
+
+<div class="modal" id="noteModal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal()">×</span>
+    <h2 id="editorHeading">Create New Note</h2>
+
+    <input type="text" id="noteTitle" placeholder="Enter note title...">
+
+    <select id="noteFolder">
+      <option value="Personal">Personal</option>
+      <option value="Study">Study</option>
+      <option value="Work">Work</option>
+    </select>
+
+    <textarea id="noteContent" placeholder="Start writing your thoughts..."></textarea>
+
+    <div class="editor-footer">
+      <span id="saveStatus">Ready to write</span>
+      <button onclick="saveNote()">Save Note</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// STATE
+let notes = [];
+try {
+  notes = JSON.parse(localStorage.getItem("notes")) || [];
+} catch (e) {
+  notes = [];
+}
+let currentNoteId = null;
+let currentView = "all";
+let currentFolder = "";
+
+function saveToStorage() {
+  try {
+    localStorage.setItem("notes", JSON.stringify(notes));
+  } catch (e) {
+    console.error("Could not save notes:", e);
+  }
+}
+
+function updateDashboard() {
+  document.getElementById("totalNotes").innerText = notes.filter(n => !n.deleted).length;
+  document.getElementById("pinnedNotes").innerText = notes.filter(n => n.pinned && !n.deleted).length;
+}
+
+// DISPLAY NOTES
+function displayNotes(data) {
+  const container = document.getElementById("notesContainer");
+  container.innerHTML = "";
+  updateDashboard();
+
+  if (data.length === 0) {
+    container.innerHTML = '<p class="empty-message">No notes found. Create your first note!</p>';
+    return;
+  }
+
+  data.forEach(note => {
+    const card = document.createElement("div");
+    card.className = "note-card";
+
+    const title = document.createElement("h3");
+    title.textContent = (note.pinned && !note.deleted ? "📌 " : "") + note.title;
+
+    const content = document.createElement("p");
+    content.textContent = note.content;
+
+    const date = document.createElement("small");
+    date.textContent = "Last updated: " + note.date;
+
+    const actions = document.createElement("div");
+    actions.className = "note-actions";
+
+    if (!note.deleted) {
+      const edit = document.createElement("button");
+      edit.textContent = "Edit";
+      edit.onclick = () => editNote(note.id);
+
+      const pin = document.createElement("button");
+      pin.textContent = note.pinned ? "Unpin" : "Pin";
+      pin.onclick = () => togglePin(note.id);
+
+      const del = document.createElement("button");
+      del.textContent = "Delete";
+      del.onclick = () => deleteNote(note.id);
+
+      actions.append(edit, pin, del);
+    } else {
+      const restore = document.createElement("button");
+      restore.textContent = "Restore";
+      restore.onclick = () => restoreNote(note.id);
+
+      const permanent = document.createElement("button");
+      permanent.textContent = "Delete Permanently";
+      permanent.onclick = () => permanentDelete(note.id);
+
+      actions.append(restore, permanent);
+    }
+
+    card.append(title, content, date, actions);
+    container.appendChild(card);
+  });
+}
+
+// CREATE / SAVE / EDIT
+function createNote() {
+  currentNoteId = null;
+  document.getElementById("noteTitle").value = "";
+  document.getElementById("noteContent").value = "";
+  document.getElementById("noteFolder").value = "Personal";
+  document.getElementById("editorHeading").innerText = "Create New Note";
+  document.getElementById("saveStatus").innerText = "Ready to write";
+  document.getElementById("noteModal").style.display = "flex";
+}
+
+function saveNote() {
+  const title = document.getElementById("noteTitle").value.trim();
+  const content = document.getElementById("noteContent").value.trim();
+  const folder = document.getElementById("noteFolder").value;
+
+  if (!title || !content) {
+    alert("Please enter both title and content!");
+    return;
+  }
+
+  const date = new Date().toLocaleString();
+
+  if (currentNoteId !== null) {
+    const note = notes.find(n => n.id === currentNoteId);
+    if (!note) return;
+    note.title = title;
+    note.content = content;
+    note.folder = folder;
+    note.date = date;
+  } else {
+    notes.unshift({
+      id: Date.now(),
+      title: title,
+      content: content,
+      folder: folder,
+      date: date,
+      pinned: false,
+      deleted: false
+    });
+  }
+
+  saveToStorage();
+  closeModal();
+  showCurrentView();
+}
+
+function editNote(id) {
+  const note = notes.find(n => n.id === id);
+  if (!note) return;
+
+  currentNoteId = id;
+  document.getElementById("noteTitle").value = note.title;
+  document.getElementById("noteContent").value = note.content;
+  document.getElementById("noteFolder").value = note.folder;
+  document.getElementById("editorHeading").innerText = "Edit Note";
+  document.getElementById("saveStatus").innerText = "Editing note";
+  document.getElementById("noteModal").style.display = "flex";
+}
+
+// DELETE / RESTORE / PIN
+function deleteNote(id) {
+  const note = notes.find(n => n.id === id);
+  if (!note) return;
+  note.deleted = true;
+  saveToStorage();
+  showCurrentView();
+}
+
+function restoreNote(id) {
+  const note = notes.find(n => n.id === id);
+  if (!note) return;
+  note.deleted = false;
+  saveToStorage();
+  showCurrentView();
+}
+
+function permanentDelete(id) {
+  if (!confirm("Permanently delete this note?")) return;
+  notes = notes.filter(n => n.id !== id);
+  saveToStorage();
+  showCurrentView();
+}
+
+function togglePin(id) {
+  const note = notes.find(n => n.id === id);
+  if (!note) return;
+  note.pinned = !note.pinned;
+  saveToStorage();
+  showCurrentView();
+}
+
+// VIEWS
+function showAllNotes(element) {
+  currentView = "all";
+  currentFolder = "";
+  updateActiveMenu(element);
+  document.getElementById("sectionTitle").innerText = "All Notes";
+  displayNotes(notes.filter(n => !n.deleted));
+}
+
+function showPinnedNotes(element) {
+  currentView = "pinned";
+  currentFolder = "";
+  updateActiveMenu(element);
+  document.getElementById("sectionTitle").innerText = "Pinned Notes";
+  displayNotes(notes.filter(n => n.pinned && !n.deleted));
+}
+
+function showTrash(element) {
+  currentView = "trash";
+  currentFolder = "";
+  updateActiveMenu(element);
+  document.getElementById("sectionTitle").innerText = "Trash";
+  displayNotes(notes.filter(n => n.deleted));
+}
+
+function filterFolder(folder, element) {
+  currentView = "folder";
+  currentFolder = folder;
+  updateActiveMenu(element);
+  document.getElementById("sectionTitle").innerText = folder + " Notes";
+  displayNotes(notes.filter(n => n.folder === folder && !n.deleted));
+}
+
+function searchNotes() {
+  const query = document.getElementById("search").value.toLowerCase();
+  const filtered = notes.filter(n =>
+    !n.deleted &&
+    (n.title.toLowerCase().includes(query) ||
+     n.content.toLowerCase().includes(query))
+  );
+  currentView = "search";
+  document.getElementById("sectionTitle").innerText = "Search Results";
+  displayNotes(filtered);
+}
+
+function showCurrentView() {
+  if (currentView === "pinned") showPinnedNotes();
+  else if (currentView === "trash") showTrash();
+  else if (currentView === "folder") filterFolder(currentFolder);
+  else if (currentView === "search") searchNotes();
+  else showAllNotes();
+}
+
+function updateActiveMenu(element) {
+  document.querySelectorAll(".menu-item").forEach(item => item.classList.remove("active"));
+  if (element) element.classList.add("active");
+}
+
+// MODAL
+function closeModal() {
+  document.getElementById("noteModal").style.display = "none";
+}
+
+document.getElementById("noteModal").addEventListener("click", function (event) {
+  if (event.target === this) closeModal();
+});
+
+document.addEventListener("keydown", function (event) {
+  if (event.key === "Escape") closeModal();
+});
+
+// INIT
+displayNotes(notes.filter(n => !n.deleted));
+</script>
+
+</body>
+</html>
